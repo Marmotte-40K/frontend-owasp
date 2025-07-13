@@ -5,19 +5,35 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 import SecuritySettings from './SecuritySettings';
 import SensitiveDataManager from './SensitiveDataManager';
-import ActivityLogs from './ActivityLogs';
 
 const Dashboard: React.FC = () => {
-  const { user, logoutAllDevices } = useAuth();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
 
+  // Debug logging
+  console.log('🔍 Dashboard user state:', user);
+
+  // Handle case where user is null
+  if (!user) {
+    console.log('⚠️ Dashboard: User is null, showing fallback');
+    return (
+      <div className="container mx-auto px-4 py-6">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Caricamento dati utente...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const securityStats = {
-    lastLogin: new Date().toLocaleDateString('it-IT'),
     activeDevices: 1,
-    twoFactorEnabled: user?.twoFactorEnabled || false,
+    twoFactorEnabled: user.totpEnabled || false,
     dataEncrypted: true,
     lastBackup: '2 giorni fa'
   };
@@ -28,7 +44,10 @@ const Dashboard: React.FC = () => {
         <div>
           <h1 className="text-3xl font-bold text-foreground">Dashboard Sicurezza</h1>
           <p className="text-muted-foreground">
-            Benvenuto, {user?.name}. Gestisci i tuoi dati in sicurezza.
+            Benvenuto, {user.name} {user.surname}. Gestisci i tuoi dati in sicurezza.
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            📧 {user.email} • 🆔 ID: {user.id} • {user.totpEnabled ? '🔐 TOTP Attivo' : '⚠️ TOTP Inattivo'}
           </p>
         </div>
         <div className="flex items-center space-x-2">
@@ -39,28 +58,14 @@ const Dashboard: React.FC = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="overview">Panoramica</TabsTrigger>
           <TabsTrigger value="data">Dati Sensibili</TabsTrigger>
           <TabsTrigger value="security">Sicurezza</TabsTrigger>
-          <TabsTrigger value="logs">Attività</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Ultimo Accesso</CardTitle>
-                <Clock className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{securityStats.lastLogin}</div>
-                <p className="text-xs text-muted-foreground">
-                  +0% dal mese scorso
-                </p>
-              </CardContent>
-            </Card>
-
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Dispositivi Attivi</CardTitle>
@@ -170,7 +175,7 @@ const Dashboard: React.FC = () => {
                 <Button 
                   variant="destructive" 
                   size="sm"
-                  onClick={logoutAllDevices}
+                  onClick={() => console.log('Logout from all devices')}
                   className="w-full"
                 >
                   Disconnetti da tutti i dispositivi
@@ -186,10 +191,6 @@ const Dashboard: React.FC = () => {
 
         <TabsContent value="security">
           <SecuritySettings />
-        </TabsContent>
-
-        <TabsContent value="logs">
-          <ActivityLogs />
         </TabsContent>
       </Tabs>
     </div>

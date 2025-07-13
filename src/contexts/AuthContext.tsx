@@ -1,200 +1,273 @@
-
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-
-interface User {
-  id: string;
-  email: string;
-  name: string;
-  twoFactorEnabled: boolean;
-  loginAttempts: number;
-  lastLogin?: string;
-}
-
-interface AuthContextType {
-  user: User | null;
-  isAuthenticated: boolean;
-  login: (email: string, password: string, twoFactorCode?: string) => Promise<boolean>;
-  register: (email: string, password: string, name: string) => Promise<boolean>;
-  logout: () => void;
-  logoutAllDevices: () => void;
-  enable2FA: () => Promise<string>; // Returns QR code URL
-  verify2FA: (code: string) => boolean;
-  refreshToken: () => Promise<boolean>;
-  updateProfile: (data: Partial<User>) => void;
-}
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
+import { authService, AuthTokenResponse, TOTPRequiredResponse, LoginRequest, RegisterRequest, UserResponse, TwoFactorMethod } from '../services/authService';
+import { tokenUtils } from '../lib/cookieUtils';
+import { handleAPIError } from '../lib/apiConstants';
+import { User, AuthContextType } from './authTypes';
+import { AuthContext } from './auth-context';
+import { createMockUser, getMockAuthenticatedUser, findMockUserByEmail } from '../lib/mockData';
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Simulate token refresh
+  // Check if user is authenticated on app start
   useEffect(() => {
-    const token = localStorage.getItem('accessToken');
-    if (token) {
-      // Simulate token validation
-      const userData = localStorage.getItem('userData');
-      if (userData) {
-        setUser(JSON.parse(userData));
-        setIsAuthenticated(true);
+    const checkAuth = async () => {
+      setIsLoading(true);
+      try {
+        console.log('🔄 Checking auth on app start...');
+        // Since we can't read HTTP-only cookies, we'll try to refresh the token
+        // If refresh succeeds, we know we're authenticated
+        const isValid = await authService.verifyAuth();
+        console.log('🔍 Auth verification result:', isValid);
+        
+        setIsAuthenticated(isValid);
+        
+        if (isValid) {
+          // Usa dati utente quando siamo autenticati
+          const mockUser = getMockAuthenticatedUser();
+          console.log('✅ Setting authenticated user:', mockUser);
+          setUser(mockUser);
+        } else {
+          console.log('❌ User not authenticated');
+          setUser(null);
+        }
+      } catch (error) {
+        console.error('❌ Auth check error:', error);
+        // If verification fails, user is not authenticated
+        setIsAuthenticated(false);
+        setUser(null);
+      } finally {
+        setIsLoading(false);
       }
-    }
-  }, []);
-
-  // Simulate auto token refresh
-  useEffect(() => {
-    if (isAuthenticated) {
-      const interval = setInterval(() => {
-        refreshToken();
-      }, 14 * 60 * 1000); // Refresh every 14 minutes
-      return () => clearInterval(interval);
-    }
-  }, [isAuthenticated]);
-
-  const login = async (email: string, password: string, twoFactorCode?: string): Promise<boolean> => {
-    console.log('🔐 Login attempt:', { email, timestamp: new Date().toISOString() });
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Mock user data
-    const mockUser: User = {
-      id: '1',
-      email,
-      name: email.split('@')[0],
-      twoFactorEnabled: false,
-      loginAttempts: 0,
-      lastLogin: new Date().toISOString()
     };
-    
-    // Simulate successful login
-    localStorage.setItem('accessToken', 'mock_access_token_' + Date.now());
-    localStorage.setItem('refreshToken', 'mock_refresh_token_' + Date.now());
-    localStorage.setItem('userData', JSON.stringify(mockUser));
-    
-    setUser(mockUser);
-    setIsAuthenticated(true);
-    
-    console.log('✅ Login successful:', { userId: mockUser.id, timestamp: new Date().toISOString() });
-    toast.success('Login effettuato con successo!');
-    
-    return true;
-  };
 
-  const register = async (email: string, password: string, name: string): Promise<boolean> => {
-    console.log('📝 Registration attempt:', { email, name, timestamp: new Date().toISOString() });
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    const mockUser: User = {
-      id: Date.now().toString(),
-      email,
-      name,
-      twoFactorEnabled: false,
-      loginAttempts: 0
-    };
-    
-    localStorage.setItem('userData', JSON.stringify(mockUser));
-    
-    console.log('✅ Registration successful:', { userId: mockUser.id, timestamp: new Date().toISOString() });
-    toast.success('Registrazione completata! Ora puoi effettuare il login.');
-    
-    return true;
-  };
+    checkAuth();
+  }, []); // Only run on component mount
 
-  const logout = () => {
-    console.log('🚪 Logout:', { userId: user?.id, timestamp: new Date().toISOString() });
-    
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-    localStorage.removeItem('userData');
-    
-    setUser(null);
-    setIsAuthenticated(false);
-    
-    toast.success('Logout effettuato con successo!');
-  };
+  // Login function
+  const login = async (email: string, password: string, totpCode?: string) => {
+    try {
+      console.log('🔐 Starting login process...');
+      
+      const credentials: LoginRequest = {
+        email,
+        password,
+        totp_code: totpCode
+      };
 
-  const logoutAllDevices = () => {
-    console.log('🚪 Logout from all devices:', { userId: user?.id, timestamp: new Date().toISOString() });
-    
-    // Simulate invalidating all tokens
-    logout();
-    toast.success('Logout effettuato da tutti i dispositivi!');
-  };
+      console.log('📡 Sending login request...');
+      const result = await authService.login(credentials);
 
-  const enable2FA = async (): Promise<string> => {
-    console.log('🔐 2FA enabled:', { userId: user?.id, timestamp: new Date().toISOString() });
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    if (user) {
-      const updatedUser = { ...user, twoFactorEnabled: true };
-      setUser(updatedUser);
-      localStorage.setItem('userData', JSON.stringify(updatedUser));
+      // Check if result is TOTP required
+      if ('totp_required' in result && result.totp_required) {
+        return {
+          success: false,
+          requiresTOTP: true,
+          error: 'TOTP code required'
+        };
+      }
+
+      // If we get here, it's an AuthTokenResponse
+      const authResponse = result as AuthTokenResponse;
+      
+      // Tokens are automatically stored in HTTP-only cookies by the server
+      setIsAuthenticated(true);
+      
+      // Prova a trovare un utente mock per email, altrimenti crea uno nuovo
+      let userData = findMockUserByEmail(email);
+      if (!userData) {
+        // Crea mock user dai dati di login
+        const nameParts = email.split('@')[0].split('.');
+        userData = createMockUser(
+          email,
+          nameParts[0] ? nameParts[0].charAt(0).toUpperCase() + nameParts[0].slice(1) : 'User',
+          nameParts[1] ? nameParts[1].charAt(0).toUpperCase() + nameParts[1].slice(1) : 'Unknown'
+        );
+      }
+      
+      // Aggiorna TOTP status se abbiamo usato un codice
+      if (totpCode) {
+        userData = { ...userData, totpEnabled: true };
+      }
+      
+      console.log('✅ Setting user data:', userData);
+      setUser(userData);
+      
+      toast.success('Login completato con successo');
+      return { success: true };
+
+    } catch (error) {
+      const apiError = handleAPIError(error);
+      
+      if (apiError.status === 423) {
+        // Account locked
+        return {
+          success: false,
+          error: 'Account temporarily locked due to too many failed attempts'
+        };
+      }
+      
+      return {
+        success: false,
+        error: apiError.message || 'Login failed'
+      };
     }
-    
-    // Return mock QR code URL
-    return 'otpauth://totp/SecureApp:' + user?.email + '?secret=JBSWY3DPEHPK3PXP&issuer=SecureApp';
   };
 
-  const verify2FA = (code: string): boolean => {
-    console.log('🔐 2FA verification:', { userId: user?.id, code: '***', timestamp: new Date().toISOString() });
-    
-    // Mock verification (accept 123456)
-    return code === '123456';
-  };
+  // Register function
+  const register = async (email: string, password: string, name: string, surname: string): Promise<boolean> => {
+    try {
+      console.log('🔐 Starting registration process...');
+      
+      const registerData: RegisterRequest = {
+        email,
+        password,
+        name,
+        surname
+      };
 
-  const refreshToken = async (): Promise<boolean> => {
-    console.log('🔄 Token refresh:', { userId: user?.id, timestamp: new Date().toISOString() });
-    
-    const refreshToken = localStorage.getItem('refreshToken');
-    if (!refreshToken) {
-      logout();
+      console.log('🔄 Starting registration process...');
+      const result = await authService.register(registerData);
+      console.log('✅ Registration API successful:', result);
+      
+      // Crea user dai dati di registrazione
+      const userData = createMockUser(email, name, surname);
+      console.log('✅ Created user for registration:', userData);
+      
+      // After successful registration, automatically log the user in
+      console.log('🔄 Auto-login after registration...');
+      const loginResult = await login(email, password); // Usa la password originale per il login
+      
+      if (loginResult.success) {
+        console.log('✅ Auto-login successful');
+        toast.success('Registrazione e accesso completati con successo!');
+        return true;
+      } else {
+        console.log('⚠️ Auto-login failed, but registration successful');
+        // Anche se il login automatico fallisce, impostiamo manualmente l'utente
+        setUser(userData);
+        setIsAuthenticated(true);
+        toast.success('Registrazione completata con successo!');
+        return true;
+      }
+
+    } catch (error) {
+      console.error('❌ Registration error:', error);
+      const apiError = handleAPIError(error);
+      toast.error(apiError.message || 'Errore durante la registrazione');
       return false;
     }
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 100));
-    
-    // Generate new tokens
-    localStorage.setItem('accessToken', 'mock_access_token_' + Date.now());
-    
-    return true;
   };
 
-  const updateProfile = (data: Partial<User>) => {
-    if (user) {
-      const updatedUser = { ...user, ...data };
-      setUser(updatedUser);
-      localStorage.setItem('userData', JSON.stringify(updatedUser));
-      console.log('👤 Profile updated:', { userId: user.id, changes: Object.keys(data), timestamp: new Date().toISOString() });
+  // Logout function
+  const logout = async () => {
+    try {
+      await authService.logout();
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Continue with logout even if API call fails
+    } finally {
+      // Clear local state
+      setUser(null);
+      setIsAuthenticated(false);
+      tokenUtils.clearAuthTokens();
+      toast.success('Logged out successfully');
+    }
+  };
+
+  // Logout from all devices function
+  const logoutFromAllDevices = async () => {
+    if (!user?.id) return;
+    
+    try {
+      // Import the security service here to avoid circular imports
+      const { securityService } = await import('../services/securityService');
+      await securityService.terminateAllSessions(user.id);
+      
+      // Clear local state (same as regular logout)
+      setUser(null);
+      setIsAuthenticated(false);
+      tokenUtils.clearAuthTokens();
+      toast.success('Disconnesso da tutti i dispositivi');
+    } catch (error) {
+      console.error('Logout from all devices error:', error);
+      const apiError = handleAPIError(error);
+      toast.error(apiError.message || 'Errore durante la disconnessione');
+    }
+  };
+
+  // Refresh token function
+  const refreshToken = async (): Promise<boolean> => {
+    try {
+      await authService.refreshToken();
+      return true;
+    } catch (error) {
+      console.error('Token refresh failed:', error);
+      // If refresh fails, logout user
+      setUser(null);
+      setIsAuthenticated(false);
+      tokenUtils.clearAuthTokens();
+      return false;
+    }
+  };
+
+  // Set up automatic token refresh
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const interval = setInterval(() => {
+      refreshToken();
+    }, 14 * 60 * 1000); // Refresh every 14 minutes (before 15-minute expiry)
+
+    return () => clearInterval(interval);
+  }, [isAuthenticated]);
+
+  // Change password function
+  const changePassword = async (
+    currentPassword: string, 
+    newPassword: string, 
+    twoFactorCode?: string, 
+    twoFactorMethod?: string
+  ) => {
+    try {
+      console.log('🔐 Starting password change...');
+      
+      const changeRequest = {
+        current_password: currentPassword,
+        new_password: newPassword,
+        ...(twoFactorCode && twoFactorMethod && {
+          two_factor_code: twoFactorCode,
+          two_factor_method: twoFactorMethod as TwoFactorMethod
+        })
+      };
+
+      console.log('📡 Sending password change request...');
+      await authService.changePassword(changeRequest);
+      
+      toast.success('Password cambiata con successo');
+      return { success: true };
+    } catch (error) {
+      const apiError = handleAPIError(error);
+      return {
+        success: false,
+        error: apiError.message || 'Errore nel cambio password'
+      };
     }
   };
 
   const value: AuthContextType = {
     user,
     isAuthenticated,
+    isLoading,
     login,
     register,
     logout,
-    logoutAllDevices,
-    enable2FA,
-    verify2FA,
+    logoutFromAllDevices,
     refreshToken,
-    updateProfile
+    changePassword
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

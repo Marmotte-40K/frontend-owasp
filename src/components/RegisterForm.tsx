@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 
 interface RegisterFormProps {
@@ -16,6 +16,7 @@ interface RegisterFormProps {
 const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
   const [formData, setFormData] = useState({
     name: '',
+    surname: '',
     email: '',
     password: '',
     confirmPassword: ''
@@ -28,7 +29,8 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
 
   // Password strength validation
   const getPasswordStrength = (password: string) => {
-    let score = 0;
+    if (!password) return { score: 0, level: 'Molto debole', checks: {} };
+    
     const checks = {
       length: password.length >= 8,
       lowercase: /[a-z]/.test(password),
@@ -37,17 +39,14 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
       special: /[!@#$%^&*(),.?":{}|<>]/.test(password)
     };
     
-    score = Object.values(checks).filter(Boolean).length;
+    const score = Object.values(checks).filter(Boolean).length;
+    const level = score < 2 ? 'Molto debole' : score < 3 ? 'Debole' : score < 4 ? 'Media' : score < 5 ? 'Forte' : 'Molto forte';
     
-    return {
-      score,
-      checks,
-      percentage: (score / 5) * 100,
-      level: score < 2 ? 'Debole' : score < 4 ? 'Media' : 'Forte'
-    };
+    return { score, level, checks };
   };
-
+  
   const passwordStrength = getPasswordStrength(formData.password);
+  const isPasswordValid = passwordStrength.score >= 3;
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -56,7 +55,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.name || !formData.email || !formData.password) {
+    if (!formData.name || !formData.surname || !formData.email || !formData.password) {
       toast.error('Compila tutti i campi obbligatori');
       return;
     }
@@ -66,7 +65,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
       return;
     }
 
-    if (passwordStrength.score < 3) {
+    if (!isPasswordValid) {
       toast.error('La password deve essere più sicura');
       return;
     }
@@ -74,14 +73,25 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
     setIsLoading(true);
 
     try {
-      const success = await register(formData.email, formData.password, formData.name);
+      console.log('🔄 Submitting registration form...');
+      const success = await register(formData.email, formData.password, formData.name, formData.surname);
       
       if (success) {
-        console.log('✅ Registration successful');
-        onToggleMode(); // Switch to login form
+        console.log('✅ Registration flow completed successfully');
+        // Reset form
+        setFormData({
+          name: '',
+          surname: '',
+          email: '',
+          password: '',
+          confirmPassword: ''
+        });
+        // Note: User should now be authenticated and redirected to dashboard automatically
+      } else {
+        console.log('❌ Registration flow failed');
       }
     } catch (error) {
-      console.error('❌ Registration error:', error);
+      console.error('❌ Registration error in component:', error);
       toast.error('Errore durante la registrazione');
     } finally {
       setIsLoading(false);
@@ -106,15 +116,32 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Nome completo</Label>
+              <Label htmlFor="name">Nome</Label>
               <div className="relative">
                 <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="name"
                   type="text"
-                  placeholder="Mario Rossi"
+                  placeholder="Mario"
                   value={formData.name}
                   onChange={(e) => handleInputChange('name', e.target.value)}
+                  className="pl-10"
+                  disabled={isLoading}
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="surname">Cognome</Label>
+              <div className="relative">
+                <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="surname"
+                  type="text"
+                  placeholder="Rossi"
+                  value={formData.surname}
+                  onChange={(e) => handleInputChange('surname', e.target.value)}
                   className="pl-10"
                   disabled={isLoading}
                   required
@@ -169,7 +196,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
                     <span>Sicurezza password: {passwordStrength.level}</span>
                     <span>{passwordStrength.score}/5</span>
                   </div>
-                  <Progress value={passwordStrength.percentage} className="h-2" />
+                  <Progress value={(passwordStrength.score / 5) * 100} className="h-2" />
                   
                   <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
                     {Object.entries(passwordStrength.checks).map(([key, valid]) => (

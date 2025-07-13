@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 
 interface LoginFormProps {
@@ -37,30 +37,48 @@ const LoginForm: React.FC<LoginFormProps> = ({ onToggleMode }) => {
       return;
     }
 
+    // Validate TOTP code format when required
+    if (show2FA && twoFactorCode && twoFactorCode.length !== 6) {
+      toast.error('Il codice 2FA deve essere di 6 cifre');
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-      // Simulate 2FA requirement for some users
-      if (!show2FA && email.includes('2fa')) {
-        setShow2FA(true);
-        toast.info('Codice 2FA richiesto. Usa 123456 per il test.');
-        setIsLoading(false);
-        return;
-      }
-
-      const success = await login(email, password, twoFactorCode);
+      const result = await login(email, password, show2FA ? twoFactorCode : undefined);
       
-      if (success) {
+      console.log('🔐 Login result:', result);
+      if (result.success) {
         console.log('✅ Login successful');
         setLoginAttempts(0);
+        setShow2FA(false);
+        setTwoFactorCode('');
+        // Redirect will be handled by the auth context
+      } else if (result.error === 'TOTP code required') {
+        setShow2FA(true);
+        toast.info('Codice 2FA richiesto');
+        // Clear any previous 2FA code
+        setTwoFactorCode('');
       } else {
-        setLoginAttempts(prev => prev + 1);
-        toast.error('Credenziali non valide');
+        // If 2FA was shown and login failed, it's a TOTP error - don't increase attempts
+        if (show2FA) {
+          toast.error('Codice 2FA non valido');
+          setTwoFactorCode('');
+        } else {
+          // Only increase login attempts for credential errors (email/password)
+          setLoginAttempts(prev => prev + 1);
+          toast.error(result.error || 'Credenziali non valide');
+        }
       }
     } catch (error) {
       console.error('❌ Login error:', error);
       setLoginAttempts(prev => prev + 1);
       toast.error('Errore durante il login');
+      // Clear 2FA code on error
+      if (show2FA) {
+        setTwoFactorCode('');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -99,8 +117,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onToggleMode }) => {
               <Alert className="border-warning">
                 <AlertTriangle className="h-4 w-4" />
                 <AlertDescription>
-                  Tentativo {loginAttempts}/{maxAttempts}. 
-                  {maxAttempts - loginAttempts} tentativi rimasti.
+                  Tentativo {loginAttempts}/{maxAttempts}.
                 </AlertDescription>
               </Alert>
             )}
@@ -156,13 +173,29 @@ const LoginForm: React.FC<LoginFormProps> = ({ onToggleMode }) => {
                   placeholder="123456"
                   value={twoFactorCode}
                   onChange={(e) => setTwoFactorCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                  className="text-center tracking-widest"
+                  className="text-center tracking-widest font-mono"
                   disabled={isBlocked || isLoading}
                   maxLength={6}
+                  autoComplete="one-time-code"
+                  autoFocus
                 />
-                <p className="text-xs text-muted-foreground text-center">
-                  Per il test, usa il codice: 123456
-                </p>
+                <div className="text-xs text-muted-foreground space-y-1">
+                  <p className="text-center">
+                    Inserisci il codice a 6 cifre dalla tua app di autenticazione
+                  </p>
+                </div>
+                {/* Option to go back to credentials */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShow2FA(false);
+                    setTwoFactorCode('');
+                  }}
+                  className="w-full text-xs text-muted-foreground hover:text-foreground underline"
+                  disabled={isLoading}
+                >
+                  Torna alle credenziali
+                </button>
               </div>
             )}
           </CardContent>
