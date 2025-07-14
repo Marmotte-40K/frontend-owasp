@@ -39,7 +39,7 @@ const SecurityHeader: React.FC = () => {
           <Shield className="h-6 w-6 text-primary" />
           <span className="text-lg font-semibold text-foreground">Fabio Musitelli</span>
         </div>
-        
+
         <div className="flex items-center space-x-4">
           <div className="hidden md:flex items-center space-x-2 text-sm text-muted-foreground">
             <div className="flex items-center space-x-1">
@@ -47,7 +47,7 @@ const SecurityHeader: React.FC = () => {
               <span>Sessione sicura</span>
             </div>
           </div>
-          
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-8 w-8 rounded-full">
@@ -69,10 +69,6 @@ const SecurityHeader: React.FC = () => {
               <DropdownMenuItem onClick={logout} className="cursor-pointer text-destructive">
                 <LogOut className="mr-2 h-4 w-4" />
                 <span>Esci</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => logoutFromAllDevices()} className="cursor-pointer text-destructive">
-                <LogOut className="mr-2 h-4 w-4" />
-                <span>Esci da tutti i dispositivi</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
