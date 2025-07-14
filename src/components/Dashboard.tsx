@@ -99,7 +99,7 @@ const Dashboard: React.FC = () => {
                 <Shield className="h-4 w-4 text-success" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">AES-256</div>
+                <div className="text-2xl font-bold">bcrypt</div>
                 <p className="text-xs text-muted-foreground">
                   Dati crittografati
                 </p>
@@ -166,9 +166,9 @@ const Dashboard: React.FC = () => {
                   </div>
                   <Badge variant="outline">Attivo</Badge>
                 </div>
-                
-                <Button 
-                  variant="destructive" 
+
+                <Button
+                  variant="destructive"
                   size="sm"
                   onClick={logoutAllDevices}
                   className="w-full"

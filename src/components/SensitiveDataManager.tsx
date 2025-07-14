@@ -67,7 +67,7 @@ const SensitiveDataManager: React.FC = () => {
   // Simulate encryption/decryption
   const toggleDataVisibility = (id: string) => {
     console.log(`👁️ Data visibility toggled: ${id}`);
-    
+
     setVisibleData(prev => {
       const newSet = new Set(prev);
       if (newSet.has(id)) {
@@ -107,7 +107,7 @@ const SensitiveDataManager: React.FC = () => {
     setSensitiveData(prev => [...prev, data]);
     setNewData({ type: 'altro', name: '', value: '' });
     setIsAddDialogOpen(false);
-    
+
     console.log(`🔐 Sensitive data added: ${data.type} - ${data.name}`);
     toast.success('Dato sensibile aggiunto e crittografato');
   };
@@ -120,7 +120,7 @@ const SensitiveDataManager: React.FC = () => {
       newSet.delete(id);
       return newSet;
     });
-    
+
     console.log(`🗑️ Sensitive data deleted: ${item?.name}`);
     toast.success('Dato sensibile eliminato');
   };
@@ -134,7 +134,7 @@ const SensitiveDataManager: React.FC = () => {
             <span>Gestione Dati Sensibili</span>
           </CardTitle>
           <CardDescription>
-            I tuoi dati sono crittografati con AES-256 e protetti
+            I tuoi dati sono crittografati con bcrypt 6 e protetti
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -149,7 +149,7 @@ const SensitiveDataManager: React.FC = () => {
                 <span>{sensitiveData.length} elementi protetti</span>
               </div>
             </div>
-            
+
             <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
               <DialogTrigger asChild>
                 <Button>
@@ -164,12 +164,12 @@ const SensitiveDataManager: React.FC = () => {
                     Il dato verrà automaticamente crittografato e protetto
                   </DialogDescription>
                 </DialogHeader>
-                
+
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="data-type">Tipo di dato</Label>
-                    <Select 
-                      value={newData.type} 
+                    <Select
+                      value={newData.type}
                       onValueChange={(value) => setNewData(prev => ({ ...prev, type: value as any }))}
                     >
                       <SelectTrigger>
@@ -184,7 +184,7 @@ const SensitiveDataManager: React.FC = () => {
                       </SelectContent>
                     </Select>
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="data-name">Nome/Descrizione</Label>
                     <Input
@@ -194,7 +194,7 @@ const SensitiveDataManager: React.FC = () => {
                       onChange={(e) => setNewData(prev => ({ ...prev, name: e.target.value }))}
                     />
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="data-value">Valore</Label>
                     <Textarea
@@ -206,7 +206,7 @@ const SensitiveDataManager: React.FC = () => {
                     />
                   </div>
                 </div>
-                
+
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
                     Annulla
@@ -243,7 +243,7 @@ const SensitiveDataManager: React.FC = () => {
                         </div>
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center space-x-2">
                       <Button
                         variant="ghost"
@@ -256,13 +256,13 @@ const SensitiveDataManager: React.FC = () => {
                           <Eye className="h-4 w-4" />
                         )}
                       </Button>
-                      
+
                       <Button variant="ghost" size="sm">
                         <Edit className="h-4 w-4" />
                       </Button>
-                      
-                      <Button 
-                        variant="ghost" 
+
+                      <Button
+                        variant="ghost"
                         size="sm"
                         onClick={() => deleteSensitiveData(item.id)}
                         className="text-destructive hover:text-destructive"
@@ -271,7 +271,7 @@ const SensitiveDataManager: React.FC = () => {
                       </Button>
                     </div>
                   </div>
-                  
+
                   <div className="bg-muted p-3 rounded font-mono text-sm">
                     {visibleData.has(item.id) ? (
                       <span className="text-foreground">{item.value}</span>
@@ -281,11 +281,11 @@ const SensitiveDataManager: React.FC = () => {
                       </span>
                     )}
                   </div>
-                  
+
                   {item.encrypted && (
                     <div className="flex items-center space-x-1 text-xs text-success">
                       <Shield className="h-3 w-3" />
-                      <span>Crittografato con AES-256</span>
+                      <span>Crittografato con bcrypt</span>
                     </div>
                   )}
                 </div>

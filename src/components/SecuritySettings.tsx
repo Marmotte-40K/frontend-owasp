@@ -123,7 +123,7 @@ const SecuritySettings: React.FC = () => {
                       <div className="bg-white p-4 rounded border w-fit mx-auto">
                         <div className="text-xs text-center font-mono">
                           [QR CODE]<br />
-                          SecureApp<br />
+                          Stefan Musitelli<br />
                           {user?.email}
                         </div>
                       </div>

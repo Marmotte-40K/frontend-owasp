@@ -63,10 +63,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password: string, twoFactorCode?: string): Promise<boolean> => {
     console.log('🔐 Login attempt:', { email, timestamp: new Date().toISOString() });
-    
+
     // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1000));
-    
+
     // Mock user data
     const mockUser: User = {
       id: '1',
@@ -76,27 +76,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       loginAttempts: 0,
       lastLogin: new Date().toISOString()
     };
-    
+
     // Simulate successful login
     localStorage.setItem('accessToken', 'mock_access_token_' + Date.now());
     localStorage.setItem('refreshToken', 'mock_refresh_token_' + Date.now());
     localStorage.setItem('userData', JSON.stringify(mockUser));
-    
+
     setUser(mockUser);
     setIsAuthenticated(true);
-    
+
     console.log('✅ Login successful:', { userId: mockUser.id, timestamp: new Date().toISOString() });
     toast.success('Login effettuato con successo!');
-    
+
     return true;
   };
 
   const register = async (email: string, password: string, name: string): Promise<boolean> => {
     console.log('📝 Registration attempt:', { email, name, timestamp: new Date().toISOString() });
-    
+
     // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1000));
-    
+
     const mockUser: User = {
       id: Date.now().toString(),
       email,
@@ -104,31 +104,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       twoFactorEnabled: false,
       loginAttempts: 0
     };
-    
+
     localStorage.setItem('userData', JSON.stringify(mockUser));
-    
+
     console.log('✅ Registration successful:', { userId: mockUser.id, timestamp: new Date().toISOString() });
     toast.success('Registrazione completata! Ora puoi effettuare il login.');
-    
+
     return true;
   };
 
   const logout = () => {
     console.log('🚪 Logout:', { userId: user?.id, timestamp: new Date().toISOString() });
-    
+
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('userData');
-    
+
     setUser(null);
     setIsAuthenticated(false);
-    
+
     toast.success('Logout effettuato con successo!');
   };
 
   const logoutAllDevices = () => {
     console.log('🚪 Logout from all devices:', { userId: user?.id, timestamp: new Date().toISOString() });
-    
+
     // Simulate invalidating all tokens
     logout();
     toast.success('Logout effettuato da tutti i dispositivi!');
@@ -136,42 +136,42 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const enable2FA = async (): Promise<string> => {
     console.log('🔐 2FA enabled:', { userId: user?.id, timestamp: new Date().toISOString() });
-    
+
     // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 500));
-    
+
     if (user) {
       const updatedUser = { ...user, twoFactorEnabled: true };
       setUser(updatedUser);
       localStorage.setItem('userData', JSON.stringify(updatedUser));
     }
-    
+
     // Return mock QR code URL
-    return 'otpauth://totp/SecureApp:' + user?.email + '?secret=JBSWY3DPEHPK3PXP&issuer=SecureApp';
+    return 'otpauth://totp/Antonio2Musitelli:' + user?.email + '?secret=JBSWY3DPEHPK3PXP&issuer=Antonio2Musitelli';
   };
 
   const verify2FA = (code: string): boolean => {
     console.log('🔐 2FA verification:', { userId: user?.id, code: '***', timestamp: new Date().toISOString() });
-    
+
     // Mock verification (accept 123456)
     return code === '123456';
   };
 
   const refreshToken = async (): Promise<boolean> => {
     console.log('🔄 Token refresh:', { userId: user?.id, timestamp: new Date().toISOString() });
-    
+
     const refreshToken = localStorage.getItem('refreshToken');
     if (!refreshToken) {
       logout();
       return false;
     }
-    
+
     // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 100));
-    
+
     // Generate new tokens
     localStorage.setItem('accessToken', 'mock_access_token_' + Date.now());
-    
+
     return true;
   };
 

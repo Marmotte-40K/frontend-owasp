@@ -24,7 +24,7 @@ const SecurityHeader: React.FC = () => {
       <div className="container mx-auto px-4 py-3 flex items-center justify-between">
         <div className="flex items-center space-x-2">
           <Shield className="h-6 w-6 text-primary" />
-          <span className="text-lg font-semibold text-foreground">SecureApp</span>
+          <span className="text-lg font-semibold text-foreground">Fabio Musitelli</span>
         </div>
         
         <div className="flex items-center space-x-4">
