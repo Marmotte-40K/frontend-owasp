@@ -21,12 +21,12 @@ const LoginForm: React.FC<LoginFormProps> = ({ onToggleMode }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [show2FA, setShow2FA] = useState(false);
   const [loginAttempts, setLoginAttempts] = useState(0);
-  
+
   const { login } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!email || !password) {
       toast.error('Compila tutti i campi obbligatori');
       return;
@@ -47,7 +47,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onToggleMode }) => {
 
     try {
       const result = await login(email, password, show2FA ? twoFactorCode : undefined);
-      
+
       console.log('🔐 Login result:', result);
       if (result.success) {
         console.log('✅ Login successful');
@@ -101,7 +101,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onToggleMode }) => {
             Inserisci le tue credenziali per accedere
           </CardDescription>
         </CardHeader>
-        
+
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
             {isBlocked && (
@@ -201,14 +201,14 @@ const LoginForm: React.FC<LoginFormProps> = ({ onToggleMode }) => {
           </CardContent>
 
           <CardFooter className="flex flex-col space-y-4">
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               className="w-full"
               disabled={isBlocked || isLoading}
             >
               {isLoading ? 'Accesso in corso...' : 'Accedi'}
             </Button>
-            
+
             <div className="text-center space-y-2">
               <button
                 type="button"
@@ -217,9 +217,6 @@ const LoginForm: React.FC<LoginFormProps> = ({ onToggleMode }) => {
               >
                 Non hai un account? Registrati
               </button>
-              <p className="text-xs text-muted-foreground">
-                Usa email@2fa.com per testare il 2FA
-              </p>
             </div>
           </CardFooter>
         </form>
