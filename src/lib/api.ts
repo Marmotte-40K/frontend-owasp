@@ -3,7 +3,7 @@ import { tokenUtils } from "./cookieUtils";
 
 // Create axios instance with base configuration
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_BASE_URL,
+  baseURL: import.meta.env.VITE_API_BASE_URL,
   timeout: 10000, // 10 seconds timeout
   headers: {
     "Content-Type": "application/json",
